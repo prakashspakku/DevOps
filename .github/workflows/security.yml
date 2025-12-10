@@ -1,0 +1,40 @@
+
+name: Security
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate Node SBOM (CycloneDX)
+        run: |
+          npm ci
+          npx @cyclonedx/cyclonedx-npm --output-file sbom.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.json
+
+  dependency-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Trivy filesystem scan (dependencies)
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+            scan-type: fs
+            ignore-unfixed: true
+            format: table
+            exit-code: '0'
+            vuln-type: 'os,library'
+            severity: 'CRITICAL,HIGH,MEDIUM'
+            path: '.'
